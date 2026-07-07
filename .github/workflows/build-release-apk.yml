@@ -1,0 +1,102 @@
+name: Build & Release APK
+
+# 触发条件：
+#   1. 推送 v* 格式的 tag（如 v1.0.0、v1.0.0+2）→ 自动构建并发布 Release
+#   2. 手动在 Actions 页面点击 "Run workflow"
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      make_release:
+        description: '构建后是否创建 GitHub Release（手动跑时默认 false，仅产出 artifact）'
+        required: false
+        default: 'false'
+
+env:
+  FLUTTER_VERSION: '3.24.5'
+  JAVA_VERSION: '17'
+
+jobs:
+  build:
+    name: Build Release APK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # 创建 Release 需要
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Setup Flutter ${{ env.FLUTTER_VERSION }}
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Flutter doctor
+        run: flutter doctor -v
+
+      - name: Read version from pubspec
+        id: ver
+        run: |
+          LINE=$(grep -E "^version:" pubspec.yaml)
+          VAL="${LINE#version: }"
+          VAL="${VAL// /}"
+          NAME="${VAL%%+*}"
+          CODE="${VAL##*+}"
+          [[ "$CODE" == "$VAL" ]] && CODE=1
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "code=$CODE"  >> "$GITHUB_OUTPUT"
+          echo "解析版本: name=$NAME code=$CODE"
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build release APK
+        # release 构建类型当前使用 debug 签名（仅用于内部测试，不可上架）
+        run: flutter build apk --release --no-tree-shake-icons
+
+      - name: Rename APK
+        id: apk
+        run: |
+          SRC="build/app/outputs/flutter-apk/app-release.apk"
+          NAME="${{ steps.ver.outputs.name }}"
+          CODE="${{ steps.ver.outputs.code }}"
+          TAG="${GITHUB_REF_NAME:-manual}"
+          OUT="director_ai-${NAME}-code${CODE}-${TAG}.apk"
+          cp "$SRC" "$OUT"
+          echo "path=$OUT" >> "$GITHUB_OUTPUT"
+          echo "产出: $OUT ($(du -h "$OUT" | cut -f1))"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: director-ai-apk
+          path: ${{ steps.apk.outputs.path }}
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: ${{ github.event_name == 'push' || github.event.inputs.make_release == 'true' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          generate_release_notes: true
+          files: ${{ steps.apk.outputs.path }}
+          body: |
+            ## 安装包
+
+            - 文件: `${{ steps.apk.outputs.path }}`
+            - 版本: `${{ steps.ver.outputs.name }}` (versionCode ${{ steps.ver.outputs.code }})
+            - 签名: **debug 签名**（仅用于内部测试，不可上架应用商店）
+
+            > 该 APK 由 GitHub Actions 在推送 tag 时自动构建并发布。
