@@ -1,11 +1,13 @@
 buildscript {
     ext.kotlin_version = '2.1.0'
     repositories {
-        // --- 修改点1：阿里云镜像放在 google() 前面 ---
-        maven { url 'https://maven.aliyun.com/repository/google' }
-        maven { url 'https://maven.aliyun.com/repository/public' }
-        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
-        // ----------------------------------------
+        // CI 环境 (GitHub Actions 等) 不使用阿里云镜像, 避免海外节点 502;
+        // 本地开发仍走阿里云加速 (中国大陆)。
+        if (System.getenv('CI') != 'true') {
+            maven { url 'https://maven.aliyun.com/repository/google' }
+            maven { url 'https://maven.aliyun.com/repository/public' }
+            maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+        }
         google()
         mavenCentral()
     }
@@ -19,11 +21,11 @@ buildscript {
 
 allprojects {
     repositories {
-        // --- 修改点3：这里也要加阿里云镜像 ---
-        maven { url 'https://maven.aliyun.com/repository/google' }
-        maven { url 'https://maven.aliyun.com/repository/public' }
-        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
-        // ---------------------------------
+        if (System.getenv('CI') != 'true') {
+            maven { url 'https://maven.aliyun.com/repository/google' }
+            maven { url 'https://maven.aliyun.com/repository/public' }
+            maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+        }
         google()
         mavenCentral()
     }
