@@ -1924,7 +1924,6 @@ Composition: centered, full body visible, neutral standing pose
         'seconds': seconds.toString(),
         'size': '720P',
         'mode': hasReferenceImages ? 'reference' : 'text',
-        'aspect_ratio': '16:9',
       };
 
       // 参考图模式：images 字段传入参考图 URL 数组
