@@ -20,10 +20,10 @@ class ApiConfig {
   static const String agnesBaseUrl = 'https://apihub.agnes-ai.com/v1'; // Agnes API 基础URL (chat/images/videos)
   static const String agnesRootUrl = 'https://apihub.agnes-ai.com'; // Agnes 根域名（视频轮询 /agnesapi 端点使用）
 
-  // Agnes 模型
+  // Agnes 模型（2.5 系列 Preview 尚未发布，使用已上线/已验证版本）
   static const String agnesTextModel = 'agnes-3.0-flash'; // 文本：对话/剧本/图片理解（512K 上下文）
-  static const String agnesImageModel = 'agnes-image-2.5-flash'; // 图像：文生图/图生图/多图合成
-  static const String agnesVideoModel = 'agnes-video-2.5-flash'; // 视频：文生视频/关键帧/参考图（720P）
+  static const String agnesImageModel = 'agnes-image-2.1-flash'; // 图像：文生图/图生图/多图合成（已验证上线）
+  static const String agnesVideoModel = 'agnes-video-v2.0'; // 视频：文生视频/关键帧/参考图（已上线）
 
   // 各服务的 API Key（统一从 Agnes 读取；旧 getter 保留为兼容别名）
   static String get agnesApiKey => ApiConfigService.getAgnesApiKey();
