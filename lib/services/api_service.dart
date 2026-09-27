@@ -114,28 +114,6 @@ class ApiConfig {
   @Deprecated('使用 MOCK_CHARACTER_COMBINED_URL 替代')
   static const String MOCK_CHARACTER_SIDE_URL =
       'https://pro.filesystem.site/cdn/20251231/068472ac4cc0ac7a4a8bdb3dcfb693.jpeg';
-
-  static Dio createDio() {
-    final dio = Dio(BaseOptions(
-      baseUrl: agnesBaseUrl,
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 60),
-      headers: {
-        'Authorization': 'Bearer $agnesApiKey',
-        'Content-Type': 'application/json',
-      },
-    ));
-
-    // 添加日志拦截器用于调试
-    dio.interceptors.add(LogInterceptor(
-      requestBody: true,
-      responseBody: true,
-      requestHeader: true,
-      error: true,
-    ));
-
-    return dio;
-  }
 }
 
 /// GLM 系统提示词 - 剧本规划模式

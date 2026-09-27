@@ -201,15 +201,18 @@ class ApiConfigService {
     String? agnesKey,
   }) async {
     _ensureInitialized();
-    final key = (agnesKey != null && agnesKey.isNotEmpty)
-        ? agnesKey
-        : (zhipuKey?.isNotEmpty == true
-            ? zhipuKey
-            : videoKey?.isNotEmpty == true
-                ? videoKey
-                : imageKey?.isNotEmpty == true
-                    ? imageKey
-                    : doubaoKey ?? '');
+    final String key;
+    if (agnesKey != null && agnesKey.isNotEmpty) {
+      key = agnesKey;
+    } else if (zhipuKey != null && zhipuKey.isNotEmpty) {
+      key = zhipuKey;
+    } else if (videoKey != null && videoKey.isNotEmpty) {
+      key = videoKey;
+    } else if (imageKey != null && imageKey.isNotEmpty) {
+      key = imageKey;
+    } else {
+      key = doubaoKey ?? '';
+    }
     await _prefs!.setString(_keyAgnesApiKey, key);
     AppLogger.success('ApiConfigService', '已更新 Agnes API Key');
   }
