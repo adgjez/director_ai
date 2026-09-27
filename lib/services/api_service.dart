@@ -1900,7 +1900,7 @@ Composition: centered, full body visible, neutral standing pose
     required String prompt,
     List<String> imageUrls = const [], // 多张参考图URL（直接传URL字符串）
     String seconds = '10',
-    String model = 'veo3.1-components',  // 兼容参数，已由 Agnes 视频模型接管
+    String model = 'agnes-video-2.5-flash', // 兼容参数，已由 Agnes 视频模型接管（实际固定使用 ApiConfig.agnesVideoModel）
     String size = '1280x720', // 兼容参数，Agnes 固定 720P
     bool sanitizePrompt = false, // 是否清理提示词（重试时使用）
   }) async {
