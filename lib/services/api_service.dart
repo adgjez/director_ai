@@ -1919,7 +1919,7 @@ Composition: centered, full body visible, neutral standing pose
       final requestData = <String, dynamic>{
         'model': ApiConfig.agnesVideoModel,
         'prompt': finalPrompt,
-        'seconds': int.tryParse(seconds) ?? 5,
+        'seconds': seconds,
         'size': '720P',
         'mode': hasReferenceImages ? 'reference' : 'text',
         'aspect_ratio': '16:9',
