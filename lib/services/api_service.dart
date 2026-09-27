@@ -1923,7 +1923,6 @@ Composition: centered, full body visible, neutral standing pose
         'size': '720P',
         'mode': hasReferenceImages ? 'reference' : 'text',
         'aspect_ratio': '16:9',
-        'n': 1,
       };
 
       // 参考图模式：images 字段传入参考图 URL 数组
@@ -2044,7 +2043,7 @@ Composition: centered, full body visible, neutral standing pose
 
         // 查询状态（Agnes：GET /agnesapi?video_id=<id>&model_name=<model>）
         final pollPath =
-            '/agnesapi?video_id=$taskId&model_name=${Uri.encodeQueryComponent(ApiConfig.agnesVideoModel)}';
+            '/agnesapi?video_id=${Uri.encodeQueryComponent(taskId)}&model_name=${Uri.encodeQueryComponent(ApiConfig.agnesVideoModel)}';
         final response = await _tuziDio.get(pollPath);
         final result = VideoGenerationResponse.fromJson(response.data);
 
