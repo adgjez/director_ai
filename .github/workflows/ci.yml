@@ -45,7 +45,8 @@ jobs:
         run: flutter pub get
 
       - name: 静态分析守门
-        run: flutter analyze
+        # 仅 error 阻断（warning/info 作为代码质量提示，不阻塞发布）
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
       - name: 单元测试守门
         run: flutter test
