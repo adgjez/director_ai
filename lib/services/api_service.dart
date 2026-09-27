@@ -1882,6 +1882,7 @@ Composition: centered, full body visible, neutral standing pose
     String model = 'agnes-video-2.5-flash', // 兼容参数，已由 Agnes 视频模型接管（实际固定使用 ApiConfig.agnesVideoModel）
     String size = '1280x720', // 兼容参数，Agnes 固定 720P
     bool sanitizePrompt = false, // 是否清理提示词（重试时使用）
+    int retryCount = 0, // 当前重试次数（内部递归用）
   }) async {
     // 如果启用清理，对提示词进行安全处理
     final finalPrompt = sanitizePrompt ? _sanitizeVideoPrompt(prompt) : prompt;
@@ -1955,6 +1956,23 @@ Composition: centered, full body visible, neutral standing pose
       return result;
     } catch (e) {
       AppLogger.error('视频生成', '生成视频失败', e, StackTrace.current);
+
+      // 503 自动重试：Agnes API 视频端点偶发过载，指数退避后重试
+      if (e is DioException && e.response?.statusCode == 503 && retryCount < 3) {
+        final delay = Duration(seconds: 15 * (retryCount + 1));
+        AppLogger.warn('视频生成', 'Agnes 视频服务暂时不可用（503），${delay.inSeconds}秒后重试（第${retryCount + 1}次）...');
+        await Future.delayed(delay);
+        return generateVideo(
+          prompt: prompt,
+          imageUrls: imageUrls,
+          seconds: seconds,
+          model: model,
+          size: size,
+          sanitizePrompt: sanitizePrompt,
+          retryCount: retryCount + 1,
+        );
+      }
+
       throw Exception('视频生成错误: $e');
     }
   }
