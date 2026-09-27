@@ -786,9 +786,9 @@ class ApiService {
           'temperature': 1.0,
         };
 
-        // 启用 thinking 模式（Agnes 通过 chat_template_kwargs 开启）
+        // 启用 thinking 模式（根级 enable_thinking）
         if (ApiConfig.USE_THINKING_MODE) {
-          requestData['chat_template_kwargs'] = {'enable_thinking': true};
+          requestData['enable_thinking'] = true;
         }
 
         final modeDesc = ApiConfig.USE_THINKING_MODE ? '流式+thinking' : '流式';
@@ -923,11 +923,9 @@ class ApiService {
         'temperature': 1.0,
       };
 
-      // 根据开关决定是否启用 thinking 模式（Agnes 通过 chat_template_kwargs 开启）
+      // 启用 thinking 模式（根级 enable_thinking）
       if (ApiConfig.USE_THINKING_MODE) {
-        requestData['chat_template_kwargs'] = {
-          'enable_thinking': true,
-        };
+        requestData['enable_thinking'] = true;
       }
 
       final modeDesc = ApiConfig.USE_THINKING_MODE ? '流式+thinking' : '流式';
@@ -1343,22 +1341,20 @@ $previousFeedback
     int retryCount = 0,
   }) async {
     try {
-      // Agnes 图像契约：output 格式与参考图必须放在 extra_body 中
+      // Agnes 图像契约：根级参数，extra_body 非标准 HTTP 字段
       final requestData = <String, dynamic>{
         'model': ApiConfig.agnesImageModel,
         'prompt': prompt,
         'n': 1,
         'size': '1024x1024',
-        'extra_body': <String, dynamic>{
-          'response_format': 'url',
-        },
+        'response_format': 'url',
       };
 
-      // 如果有参考图，作为 extra_body.image 传入（图生图，参考模式）
+      // 如果有参考图，作为根级 image 传入（图生图，参考模式）
       if (referenceImages != null && referenceImages.isNotEmpty) {
         // API 支持数组格式：["base64xxx", "base64yyy"]
         // 或 URL 格式：["https://xxx", "https://yyy"]
-        (requestData['extra_body'] as Map<String, dynamic>)['image'] = referenceImages;
+        requestData['image'] = referenceImages;
         AppLogger.info('图片生成', '图生图模式，参考图数量: ${referenceImages.length}');
       }
 
@@ -1923,9 +1919,11 @@ Composition: centered, full body visible, neutral standing pose
       final requestData = <String, dynamic>{
         'model': ApiConfig.agnesVideoModel,
         'prompt': finalPrompt,
-        'seconds': seconds,
+        'seconds': int.tryParse(seconds) ?? 5,
         'size': '720P',
         'mode': hasReferenceImages ? 'reference' : 'text',
+        'aspect_ratio': '16:9',
+        'n': 1,
       };
 
       // 参考图模式：images 字段传入参考图 URL 数组
