@@ -42,7 +42,7 @@ void main() {
       expect(ApiConfig.agnesRootUrl, 'https://apihub.agnes-ai.com');
       expect(ApiConfig.agnesTextModel, 'agnes-3.0-flash');
       expect(ApiConfig.agnesImageModel, 'agnes-image-2.5-flash');
-      expect(ApiConfig.agnesVideoModel, 'agnes-video-2.5-flash');
+      expect(ApiConfig.agnesVideoModel, 'agnes-video-v2.0');
     });
 
     test('四个旧通道 getter 与 agnesApiKey 同源', () {
