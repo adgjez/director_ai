@@ -1,5 +1,5 @@
 buildscript {
-    ext.kotlin_version = '2.1.0'
+    ext.kotlin_version = '2.2.20'
     repositories {
         // --- 修改点1：阿里云镜像放在 google() 前面 ---
         maven { url 'https://maven.aliyun.com/repository/google' }
