@@ -16,20 +16,26 @@ typedef _SceneCountRange = SceneCountRange;
 
 /// API 配置
 class ApiConfig {
-  static const String zhipuBaseUrl = 'https://open.bigmodel.cn/api/paas/v4'; // 智谱 GLM
-  static const String cangheBaseUrl = 'https://ciyuan.today'; // 词元 API 基础URL (视频 & 图像)
-  static const String doubaoBaseUrl = 'https://ark.cn-beijing.volces.com/api/v3'; // 豆包 ARK API
+  // Agnes AI：统一多模态 API（OpenAI 兼容），文本/图像/视频共用一把 Key
+  static const String agnesBaseUrl = 'https://apihub.agnes-ai.com/v1'; // Agnes API 基础URL (chat/images/videos)
+  static const String agnesRootUrl = 'https://apihub.agnes-ai.com'; // Agnes 根域名（视频轮询 /agnesapi 端点使用）
 
-  // 各服务的 API Key（从 ApiConfigService 读取）
-  static String get zhipuApiKey => ApiConfigService.getZhipuApiKey();
-  static String get videoApiKey => ApiConfigService.getVideoApiKey();
-  static String get imageApiKey => ApiConfigService.getImageApiKey();
-  static String get doubaoApiKey => ApiConfigService.getDoubaoApiKey();
+  // Agnes 模型
+  static const String agnesTextModel = 'agnes-3.0-flash'; // 文本：对话/剧本/图片理解（512K 上下文）
+  static const String agnesImageModel = 'agnes-image-2.5-flash'; // 图像：文生图/图生图/多图合成
+  static const String agnesVideoModel = 'agnes-video-2.5-flash'; // 视频：文生视频/关键帧/参考图（720P）
 
-  /// 创建智谱 API Dio 实例
+  // 各服务的 API Key（统一从 Agnes 读取；旧 getter 保留为兼容别名）
+  static String get agnesApiKey => ApiConfigService.getAgnesApiKey();
+  static String get zhipuApiKey => ApiConfigService.getAgnesApiKey();
+  static String get videoApiKey => ApiConfigService.getAgnesApiKey();
+  static String get imageApiKey => ApiConfigService.getAgnesApiKey();
+  static String get doubaoApiKey => ApiConfigService.getAgnesApiKey();
+
+  /// 创建 Agnes 文本 API Dio 实例（对话/剧本/图片理解）
   static Dio createDio() {
     final dio = Dio(BaseOptions(
-      baseUrl: zhipuBaseUrl,
+      baseUrl: agnesBaseUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 60),
       headers: {
@@ -41,7 +47,7 @@ class ApiConfig {
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
         // 动态获取最新的 API Key
-        options.headers['Authorization'] = 'Bearer $zhipuApiKey';
+        options.headers['Authorization'] = 'Bearer $agnesApiKey';
         return handler.next(options);
       },
     ));
@@ -57,9 +63,9 @@ class ApiConfig {
     return dio;
   }
 
-  // 豆包模型配置
-  // static const String doubaoImageModel = 'doubao-seed-1-8-251215'; // 支持图片的豆包模型
-  static const String doubaoImageModel = 'doubao-seed-1-8-preview-251115'; // 支持图片的豆包模型
+  // （兼容占位）豆包模型配置 - Agnes 统一后不再使用
+  @Deprecated('Agnes 接入后不再使用豆包模型')
+  static const String doubaoImageModel = 'agnes-3.0-flash';
 
   // ==================== 功能开关 ====================
   /// 生产环境请将此值设为 false
@@ -111,11 +117,11 @@ class ApiConfig {
 
   static Dio createDio() {
     final dio = Dio(BaseOptions(
-      baseUrl: zhipuBaseUrl,
+      baseUrl: agnesBaseUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 60),
       headers: {
-        'Authorization': 'Bearer $zhipuApiKey',
+        'Authorization': 'Bearer $agnesApiKey',
         'Content-Type': 'application/json',
       },
     ));
@@ -572,11 +578,12 @@ class GLMStreamChunk {
 }
 
 /// 处理所有 API 调用的服务类
+/// 统一接入 Agnes AI（OpenAI 兼容），文本/图像/视频/图片理解共用一把 Key
 class ApiService {
-  late Dio _dio;        // 智谱 GLM-4.7
-  late Dio _tuziDio;    // 词元 API 视频生成
-  late Dio _imageDio;   // 词元 API 图像生成
-  late Dio _doubaoDio;  // 豆包 ARK API (图片理解)
+  late Dio _dio;        // Agnes 文本（对话/剧本/图片理解，原智谱 GLM 通道替换）
+  late Dio _tuziDio;    // Agnes 视频（原词元视频通道替换）
+  late Dio _imageDio;   // Agnes 图像（原词元图像通道替换）
+  late Dio _doubaoDio;  // Agnes 文本多模态（原豆包 ARK 图片理解通道替换）
 
   ApiService() {
     _dio = ApiConfig.createDio();
@@ -585,10 +592,10 @@ class ApiService {
     _doubaoDio = _createDoubaoDio();
   }
 
-  /// 创建词元 API 专用的 Dio 实例（视频生成）
+  /// 创建 Agnes 视频专用 Dio 实例（任务提交 + 状态轮询）
   Dio _createTuziDio() {
     final dio = Dio(BaseOptions(
-      baseUrl: ApiConfig.cangheBaseUrl,
+      baseUrl: ApiConfig.agnesRootUrl, // 视频轮询 /agnesapi 在根域名下
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 60),
       headers: {
@@ -599,7 +606,7 @@ class ApiService {
     // 添加拦截器，在每次请求时动态设置 Authorization header
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
-        options.headers['Authorization'] = 'Bearer ${ApiConfig.videoApiKey}';
+        options.headers['Authorization'] = 'Bearer ${ApiConfig.agnesApiKey}';
         return handler.next(options);
       },
     ));
@@ -615,10 +622,10 @@ class ApiService {
     return dio;
   }
 
-  /// 创建图像生成 API 专用的 Dio 实例
+  /// 创建 Agnes 图像生成专用 Dio 实例
   Dio _createImageDio() {
     final dio = Dio(BaseOptions(
-      baseUrl: ApiConfig.cangheBaseUrl,
+      baseUrl: ApiConfig.agnesBaseUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 60),
       headers: {
@@ -629,7 +636,7 @@ class ApiService {
     // 添加拦截器，在每次请求时动态设置 Authorization header
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
-        options.headers['Authorization'] = 'Bearer ${ApiConfig.imageApiKey}';
+        options.headers['Authorization'] = 'Bearer ${ApiConfig.agnesApiKey}';
         return handler.next(options);
       },
     ));
@@ -645,10 +652,10 @@ class ApiService {
     return dio;
   }
 
-  /// 创建豆包 ARK API 专用的 Dio 实例（图片理解）
+  /// 创建 Agnes 图片理解（多模态文本）专用 Dio 实例
   Dio _createDoubaoDio() {
     final dio = Dio(BaseOptions(
-      baseUrl: ApiConfig.doubaoBaseUrl,
+      baseUrl: ApiConfig.agnesBaseUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 60),
       headers: {
@@ -659,7 +666,7 @@ class ApiService {
     // 添加拦截器，在每次请求时动态设置 Authorization header
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
-        options.headers['Authorization'] = 'Bearer ${ApiConfig.doubaoApiKey}';
+        options.headers['Authorization'] = 'Bearer ${ApiConfig.agnesApiKey}';
         return handler.next(options);
       },
     ));
@@ -675,33 +682,25 @@ class ApiService {
     return dio;
   }
 
-  /// 动态更新所有 API keys（已弃用，请使用 ApiConfigService）
-  @Deprecated('使用 ApiConfigService.setXxxApiKey() 方法替代')
+  /// 动态更新 API Keys（已弃用，统一为 Agnes API Key，请使用 ApiConfigService.setAgnesApiKey）
+  @Deprecated('使用 ApiConfigService.setAgnesApiKey() 替代')
   Future<void> updateTokens({
     String? zhipuKey,
     String? videoKey,
     String? imageKey,
     String? doubaoKey,
   }) async {
-    if (zhipuKey != null) {
-      await ApiConfigService.setZhipuApiKey(zhipuKey);
+    final agnesKey = zhipuKey ?? videoKey ?? imageKey ?? doubaoKey;
+    if (agnesKey != null) {
+      await ApiConfigService.setAgnesApiKey(agnesKey);
       _dio = ApiConfig.createDio();
-    }
-    if (videoKey != null) {
-      await ApiConfigService.setVideoApiKey(videoKey);
       _tuziDio = _createTuziDio();
-    }
-    if (imageKey != null) {
-      await ApiConfigService.setImageApiKey(imageKey);
       _imageDio = _createImageDio();
-    }
-    if (doubaoKey != null) {
-      await ApiConfigService.setDoubaoApiKey(doubaoKey);
       _doubaoDio = _createDoubaoDio();
     }
   }
 
-  // ==================== GLM-4.7 智能体 API ====================
+  // ==================== Agnes 文本智能体 API ====================
 
   /// 普通聊天方法 - 使用聊天模式的系统提示词
   /// 返回流式响应，包含思考过程和最终内容
@@ -710,7 +709,7 @@ class ApiService {
   }
 
   /// 支持图片识别的聊天方法
-  /// 有图片时使用豆包 ARK API，无图片时使用 GLM-4.7
+  /// 有图片时使用 Agnes 多模态文本，无图片时使用 Agnes 文本模型
   /// [userMessage] 用户当前的文本消息
   /// [imageBase64] 用户上传的图片（base64 格式，纯 base64 不带前缀）
   /// [imageMimeType] 图片的 MIME 类型（如 image/jpeg, image/png），需与实际图片格式一致
@@ -726,17 +725,15 @@ class ApiService {
       final hasImage = imageBase64 != null && imageBase64.isNotEmpty;
 
       if (hasImage) {
-        // === 图片模式：使用豆包 ARK API ===
-        if (ApiConfig.doubaoApiKey.isEmpty) {
-          throw Exception('豆包 API Key 未设置，请在设置中配置');
+        // === 图片模式：使用 Agnes 多模态文本（agnes-3.0-flash 支持 image_url） ===
+        if (ApiConfig.agnesApiKey.isEmpty) {
+          throw Exception('Agnes API Key 未设置，请在设置中配置');
         }
 
-        // 豆包 ARK API 使用 OpenAI 兼容格式
-        // type 为 "image_url"
-        // image_url.url 为 "data:image/xxx;base64,{base64}"
+        // Agnes 兼容 OpenAI 格式：image_url 使用 data URI
         final mimeType = imageMimeType ?? 'image/jpeg';
         final requestData = {
-          'model': ApiConfig.doubaoImageModel,
+          'model': ApiConfig.agnesTextModel,
           'messages': [
             {
               'role': 'user',
@@ -756,21 +753,21 @@ class ApiService {
           ],
         };
 
-        AppLogger.apiRequestRaw('POST', '/chat/completions (豆包图片识别)', requestData);
-        AppLogger.info('豆包-ARK', '使用豆包 API 进行图片识别');
+        AppLogger.apiRequestRaw('POST', '/chat/completions (Agnes 图片识别)', requestData);
+        AppLogger.info('Agnes-Vision', '使用 Agnes 多模态文本进行图片识别');
 
-        // 豆包 API 调用（非流式）
+        // Agnes 调用（非流式）
         final response = await _doubaoDio.post(
           '/chat/completions',
           data: requestData,
         );
 
-        AppLogger.apiResponseRaw('/chat/completions (豆包图片识别)', response.data);
+        AppLogger.apiResponseRaw('/chat/completions (Agnes 图片识别)', response.data);
 
-        // 解析豆包响应（OpenAI 格式）
+        // 解析 Agnes 响应（OpenAI 格式）
         final choices = response.data['choices'] as List?;
         if (choices == null || choices.isEmpty) {
-          throw Exception('豆包 API 响应格式错误：没有 choices');
+          throw Exception('Agnes API 响应格式错误：没有 choices');
         }
 
         final firstChoice = choices[0] as Map<String, dynamic>?;
@@ -780,12 +777,12 @@ class ApiService {
         if (content != null && content.isNotEmpty) {
           yield GLMStreamChunk(type: GLMStreamType.content, text: content);
         } else {
-          throw Exception('豆包 API 响应格式错误：content 为空');
+          throw Exception('Agnes API 响应格式错误：content 为空');
         }
 
-        AppLogger.success('豆包-ARK', '图片识别完成');
+        AppLogger.success('Agnes-Vision', '图片识别完成');
       } else {
-        // === 纯文本模式：使用 GLM-4.7 ===
+        // === 纯文本模式：使用 Agnes 文本模型（agnes-3.0-flash） ===
         // 添加 system prompt
         final messages = <Map<String, dynamic>>[
           {'role': 'system', 'content': _glmChatPrompt},
@@ -803,21 +800,21 @@ class ApiService {
         messages.add({'role': 'user', 'content': userMessage});
 
         final requestData = <String, dynamic>{
-          'model': 'glm-4.7',
+          'model': ApiConfig.agnesTextModel,
           'messages': messages,
           'stream': true,
           'max_tokens': 65536,
           'temperature': 1.0,
         };
 
-        // 启用 thinking 模式
+        // 启用 thinking 模式（Agnes 通过 chat_template_kwargs 开启）
         if (ApiConfig.USE_THINKING_MODE) {
-          requestData['thinking'] = {'type': 'enabled'};
+          requestData['chat_template_kwargs'] = {'enable_thinking': true};
         }
 
         final modeDesc = ApiConfig.USE_THINKING_MODE ? '流式+thinking' : '流式';
-        AppLogger.api('POST', '/chat/completions ($modeDesc)', {'model': 'glm-4.7'});
-        AppLogger.info('GLM-Chat', '使用模型: glm-4.7 (纯文本)');
+        AppLogger.api('POST', '/chat/completions ($modeDesc)', {'model': ApiConfig.agnesTextModel});
+        AppLogger.info('Agnes-Chat', '使用模型: ${ApiConfig.agnesTextModel} (纯文本)');
 
         // 使用 ResponseType.stream 实现真正的流式处理
         final response = await _dio.post<ResponseBody>(
@@ -842,7 +839,7 @@ class ApiService {
             if (line.startsWith('data: ')) {
               final data = line.substring(6);
               if (data.trim() == '[DONE]') {
-                AppLogger.success('GLM-Chat', '流式响应完成');
+                AppLogger.success('Agnes-Chat', '流式响应完成');
                 return;
               }
               try {
@@ -880,8 +877,8 @@ class ApiService {
     }
   }
 
-  /// 发送对话历史到 GLM-4.7 并获取下一步操作（非流式）
-  /// 系统提示词指示 GLM 作为状态机编排器工作
+  /// 发送对话历史到 Agnes 文本模型并获取下一步操作（非流式）
+  /// 系统提示词指示模型作为状态机编排器工作
   Future<String> sendToGLM(List<Map<String, String>> conversationHistory) async {
     try {
       final messages = [
@@ -890,7 +887,7 @@ class ApiService {
       ];
 
       final requestData = {
-        'model': 'glm-4.7',
+        'model': ApiConfig.agnesTextModel,
         'messages': messages,
         'stream': false,
         'max_tokens': 65536,
@@ -908,21 +905,20 @@ class ApiService {
 
       final content = response.data['choices']?[0]?['message']?['content'] as String?;
       if (content == null) {
-        AppLogger.error('GLM', '响应中没有内容', null, StackTrace.current);
-        throw Exception('GLM 响应中没有内容');
+        AppLogger.error('Agnes', '响应中没有内容', null, StackTrace.current);
+        throw Exception('Agnes 响应中没有内容');
       }
 
-      AppLogger.success('GLM', '成功获取响应，内容长度: ${content.length}');
+      AppLogger.success('Agnes', '成功获取响应，内容长度: ${content.length}');
       return content;
     } catch (e) {
-      AppLogger.error('GLM', 'API 调用失败', e, StackTrace.current);
-      throw Exception('GLM API 错误: $e');
+      AppLogger.error('Agnes', 'API 调用失败', e, StackTrace.current);
+      throw Exception('Agnes API 错误: $e');
     }
   }
 
-  /// 发送对话历史到 GLM-4.7 并获取流式响应
+  /// 发送对话历史到 Agnes 文本模型并获取流式响应
   /// 使用真正的流式处理，边接收边返回数据
-  /// 启用 thinking 模式，返回思考过程和最终内容
   /// [systemPrompt] 可选的自定义系统提示词，默认使用剧本规划模式
   /// [conversationHistory] 对话历史（纯文本格式）
   ///
@@ -941,17 +937,17 @@ class ApiService {
       ];
 
       final requestData = <String, dynamic>{
-        'model': 'glm-4.7',  // 使用文本模型生成剧本
+        'model': ApiConfig.agnesTextModel,  // 使用 Agnes 文本模型生成剧本
         'messages': messages,
         'stream': true,
         'max_tokens': 65536,
         'temperature': 1.0,
       };
 
-      // 根据开关决定是否启用 thinking 模式
+      // 根据开关决定是否启用 thinking 模式（Agnes 通过 chat_template_kwargs 开启）
       if (ApiConfig.USE_THINKING_MODE) {
-        requestData['thinking'] = {
-          'type': 'enabled',
+        requestData['chat_template_kwargs'] = {
+          'enable_thinking': true,
         };
       }
 
@@ -965,7 +961,7 @@ class ApiService {
         options: Options(responseType: ResponseType.stream),
       );
 
-      AppLogger.info('GLM', '开始接收流式响应 (thinking=${ApiConfig.USE_THINKING_MODE})');
+      AppLogger.info('Agnes', '开始接收流式响应 (thinking=${ApiConfig.USE_THINKING_MODE})');
 
       final contentBuffer = StringBuffer();
       final thinkingBuffer = StringBuffer();
@@ -1060,12 +1056,12 @@ class ApiService {
 
       // 如果流为空，返回空字符串避免错误
       if (contentBuffer.isEmpty && thinkingBuffer.isEmpty) {
-        AppLogger.warn('GLM', '流式响应为空，共处理 $chunkCount 个chunk');
+        AppLogger.warn('Agnes', '流式响应为空，共处理 $chunkCount 个chunk');
         yield GLMStreamChunk(type: GLMStreamType.content, text: '');
       }
     } catch (e) {
-      AppLogger.error('GLM', '流式 API 调用失败', e, StackTrace.current);
-      throw Exception('GLM API 流式错误: $e');
+      AppLogger.error('Agnes', '流式 API 调用失败', e, StackTrace.current);
+      throw Exception('Agnes API 流式错误: $e');
     }
   }
 
@@ -1246,7 +1242,7 @@ $previousFeedback
     );
   }
 
-  /// 使用豆包 ARK API 分析图片，提取角色/人物特征描述
+  /// 使用 Agnes 多模态文本分析图片，提取角色/人物特征描述
   /// [imageBase64] 图片的 base64 编码（纯 base64，不带前缀）
   /// 返回详细的特征描述文本，用于后续剧本生成
   Future<String> analyzeImageForCharacter(
@@ -1254,8 +1250,8 @@ $previousFeedback
     String mimeType = 'image/jpeg',
   }) async {
     try {
-      if (ApiConfig.doubaoApiKey.isEmpty) {
-        throw Exception('豆包 API Key 未设置，无法进行图片分析');
+      if (ApiConfig.agnesApiKey.isEmpty) {
+        throw Exception('Agnes API Key 未设置，无法进行图片分析');
       }
 
       const prompt = '''请仔细观察这张图片，提取其中主要角色或人物的详细特征描述。
@@ -1272,11 +1268,9 @@ $previousFeedback
 
 请确保描述足够详细，以便后续可以根据这些描述生成一致的角色形象。''';
 
-      // 豆包 ARK API 使用 OpenAI 兼容格式
-      // type 为 "image_url"
-      // image_url.url 为 "data:image/xxx;base64,{base64}"
+      // Agnes 兼容 OpenAI 格式（agnes-3.0-flash 支持 image_url data URI）
       final requestData = {
-        'model': ApiConfig.doubaoImageModel,
+        'model': ApiConfig.agnesTextModel,
         'messages': [
           {
             'role': 'user',
@@ -1296,20 +1290,20 @@ $previousFeedback
         ],
       };
 
-      AppLogger.apiRequestRaw('POST', '/chat/completions (豆包图片分析)', requestData);
-      AppLogger.info('豆包-ARK', '开始分析图片特征...');
+      AppLogger.apiRequestRaw('POST', '/chat/completions (Agnes 图片分析)', requestData);
+      AppLogger.info('Agnes-Vision', '开始分析图片特征...');
 
       final response = await _doubaoDio.post(
         '/chat/completions',
         data: requestData,
       );
 
-      AppLogger.apiResponseRaw('/chat/completions (豆包图片分析)', response.data);
+      AppLogger.apiResponseRaw('/chat/completions (Agnes 图片分析)', response.data);
 
-      // 解析豆包响应（OpenAI 格式）
+      // 解析 Agnes 响应（OpenAI 格式）
       final choices = response.data['choices'] as List?;
       if (choices == null || choices.isEmpty) {
-        AppLogger.error('豆包-ARK', '响应格式错误：没有 choices', null, StackTrace.current);
+        AppLogger.error('Agnes-Vision', '响应格式错误：没有 choices', null, StackTrace.current);
         throw Exception('图片分析失败：响应格式错误');
       }
 
@@ -1318,15 +1312,15 @@ $previousFeedback
       final content = message?['content'] as String?;
 
       if (content == null || content.isEmpty) {
-        AppLogger.error('豆包-ARK', '图片分析响应为空', null, StackTrace.current);
+        AppLogger.error('Agnes-Vision', '图片分析响应为空', null, StackTrace.current);
         throw Exception('图片分析失败：响应为空');
       }
 
-      AppLogger.success('豆包-ARK', '图片分析完成');
-      AppLogger.info('豆包-ARK', '提取的特征:\n$content');
+      AppLogger.success('Agnes-Vision', '图片分析完成');
+      AppLogger.info('Agnes-Vision', '提取的特征:\n$content');
       return content;
     } catch (e) {
-      AppLogger.error('豆包-ARK', '图片分析失败', e, StackTrace.current);
+      AppLogger.error('Agnes-Vision', '图片分析失败', e, StackTrace.current);
       throw Exception('图片分析失败: $e');
     }
   }
@@ -1370,20 +1364,22 @@ $previousFeedback
     int retryCount = 0,
   }) async {
     try {
-      final requestData = {
-        'model': 'gemini-2.5-flash-image-vip',
-        // 'model': 'gemini-3-pro-image-preview',
+      // Agnes 图像契约：output 格式与参考图必须放在 extra_body 中
+      final requestData = <String, dynamic>{
+        'model': ApiConfig.agnesImageModel,
         'prompt': prompt,
         'n': 1,
-        'response_format': 'url',
         'size': '1024x1024',
+        'extra_body': <String, dynamic>{
+          'response_format': 'url',
+        },
       };
 
-      // 如果有参考图，添加到请求中（图生图）
+      // 如果有参考图，作为 extra_body.image 传入（图生图，参考模式）
       if (referenceImages != null && referenceImages.isNotEmpty) {
         // API 支持数组格式：["base64xxx", "base64yyy"]
         // 或 URL 格式：["https://xxx", "https://yyy"]
-        requestData['image'] = referenceImages;
+        (requestData['extra_body'] as Map<String, dynamic>)['image'] = referenceImages;
         AppLogger.info('图片生成', '图生图模式，参考图数量: ${referenceImages.length}');
       }
 
@@ -1589,7 +1585,7 @@ gentle, soft, calm, peaceful, warm, bright, smooth, quiet, serene, beautiful, lo
       final response = await _dio.post(
         '/chat/completions',
         data: {
-          'model': 'glm-4-flash', // 使用快速模型
+          'model': ApiConfig.agnesTextModel, // 使用 Agnes 文本模型
           'messages': [
             {'role': 'user', 'content': rewritePrompt}
           ],
@@ -1599,10 +1595,10 @@ gentle, soft, calm, peaceful, warm, bright, smooth, quiet, serene, beautiful, lo
 
       AppLogger.apiResponseRaw('/chat/completions (提示词重写)', response.data);
 
-      // 解析 GLM 响应（OpenAI 格式）
+      // 解析 Agnes 响应（OpenAI 格式）
       final choices = response.data['choices'] as List?;
       if (choices == null || choices.isEmpty) {
-        throw Exception('GLM API 响应格式错误：没有 choices');
+        throw Exception('Agnes API 响应格式错误：没有 choices');
       }
 
       final firstChoice = choices[0] as Map<String, dynamic>?;
@@ -1610,7 +1606,7 @@ gentle, soft, calm, peaceful, warm, bright, smooth, quiet, serene, beautiful, lo
       final rewrittenPrompt = message?['content'] as String?;
 
       if (rewrittenPrompt == null || rewrittenPrompt.isEmpty) {
-        throw Exception('GLM API 响应中没有内容');
+        throw Exception('Agnes API 响应中没有内容');
       }
 
       final cleaned = rewrittenPrompt.trim();
@@ -1648,135 +1644,19 @@ gentle, soft, calm, peaceful, warm, bright, smooth, quiet, serene, beautiful, lo
     AppLogger.info('图生图(角色)', 'Prompt: $prompt');
 
     try {
-      final dio = Dio(BaseOptions(
-        baseUrl: ApiConfig.cangheBaseUrl,
-        connectTimeout: const Duration(seconds: 60),
-        receiveTimeout: const Duration(seconds: 500),
-        headers: {
-          'Authorization': 'Bearer ${ApiConfig.imageApiKey}',
-          'Content-Type': 'application/json',
-        },
-      ));
-
-      // 构建 content 数组：文本 + 多张参考图
-      final List<Map<String, dynamic>> contentItems = [];
-
-      // 添加文本提示
-      contentItems.add({
-        'type': 'text',
-        'text': prompt,
-      });
-
-      // 添加角色参考图（三视图）
-      for (final imageUrl in characterImageUrls) {
-        if (imageUrl.isNotEmpty) {
-          contentItems.add({
-            'type': 'image_url',
-            'image_url': {
-              'url': imageUrl,
-            },
-          });
-        }
-      }
-
-      final requestBody = {
-        'model': 'gpt-4o-image-vip',
-        'stream': false,
-        'messages': [
-          {
-            'role': 'user',
-            'content': contentItems,
-          }
-        ],
-      };
-
-      AppLogger.apiRequestRaw('POST', '/v1/chat/completions (图生图)', requestBody);
-      AppLogger.info('图生图(角色)', '发送请求...');
-      final response = await dio.post(
-        '/v1/chat/completions',
-        data: requestBody,
+      // Agnes 图像接口通过 extra_body.image 支持参考图（图生图参考模式）
+      // 直接复用 generateImage 通道，保持角色一致性
+      AppLogger.info('图生图(角色)', '通过 Agnes 图像接口生成，参考图模式');
+      final imageUrl = await generateImage(
+        prompt,
+        referenceImages: characterImageUrls,
       );
-
-      AppLogger.apiResponseRaw('/v1/chat/completions (图生图)', response.data);
-
-      if (response.statusCode == 200) {
-        final data = response.data;
-
-        // 解析响应获取图片 URL
-        // 响应格式: { choices: [{ message: { content: "url" } }] }
-        final choices = data['choices'] as List?;
-        if (choices != null && choices.isNotEmpty) {
-          final message = choices[0]['message'];
-          final content = message['content'];
-
-          // content 可能是字符串 URL 或包含图片的结构
-          String? imageUrl;
-          if (content is String) {
-            // 直接是 URL 字符串
-            if (content.startsWith('http')) {
-              imageUrl = content;
-            } else {
-              // 可能是 Markdown 格式的复杂响应，需要提取图片 URL
-              try {
-                final parsed = content;
-
-                // 策略1: 优先匹配 markdown 图片格式 ![alt](url)
-                final markdownImageMatch = RegExp(r'!\[.*?\]\((https://pro\.filesystem\.site/cdn/[^\)]+)\)').firstMatch(parsed);
-                if (markdownImageMatch != null) {
-                  imageUrl = markdownImageMatch.group(1);
-                  AppLogger.info('图生图(角色)', '从 Markdown 图片格式提取 URL: $imageUrl');
-                }
-
-                // 策略2: 如果没找到，匹配 pro.filesystem.site 的图片 URL
-                if (imageUrl == null) {
-                  final cdnUrlMatch = RegExp(r'https://pro\.filesystem\.site/cdn/[^\s\])"]+').firstMatch(parsed);
-                  if (cdnUrlMatch != null) {
-                    imageUrl = cdnUrlMatch.group(0);
-                    AppLogger.info('图生图(角色)', '从 CDN URL 提取: $imageUrl');
-                  }
-                }
-
-                // 策略3: 兜底 - 提取所有 URL 并过滤预览页面
-                if (imageUrl == null) {
-                  final allUrls = RegExp(r'https?://[^\s\])"]+').allMatches(parsed).map((m) => m.group(0)!).toList();
-                  AppLogger.info('图生图(角色)', '找到的所有 URL: $allUrls');
-                  // 过滤掉 pro.asyncdata.net/web 预览链接
-                  for (final url in allUrls) {
-                    if (!url.contains('pro.asyncdata.net/web')) {
-                      imageUrl = url;
-                      break;
-                    }
-                  }
-                }
-              } catch (e) {
-                AppLogger.error('图生图(角色)', '解析 URL 失败: $e', e, StackTrace.current);
-              }
-            }
-          } else if (content is List) {
-            // content 是数组，查找图片类型
-            for (final item in content) {
-              if (item['type'] == 'image_url') {
-                imageUrl = item['image_url']?['url'];
-                break;
-              }
-            }
-          }
-
-          if (imageUrl != null && imageUrl.isNotEmpty) {
-            AppLogger.success('图生图(角色)', '图片生成成功: $imageUrl');
-            return imageUrl;
-          }
-        }
-
-        AppLogger.error('图生图(角色)', '响应中未找到图片 URL', null, StackTrace.current);
-        throw Exception('响应中未找到图片 URL');
-      } else {
-        throw Exception('请求失败: ${response.statusCode}');
-      }
+      AppLogger.success('图生图(角色)', '图片生成成功: $imageUrl');
+      return imageUrl;
     } catch (e) {
       AppLogger.error('图生图(角色)', '生成失败: $e', e, StackTrace.current);
 
-      // 如果新接口失败，降级使用原有的文本生成方式
+      // 如果参考图模式失败，降级使用纯文本生成方式
       AppLogger.warn('图生图(角色)', '降级到文本生成模式');
       return generateImage(prompt);
     }
@@ -1973,7 +1853,7 @@ Composition: centered, full body visible, neutral standing pose
     return sheets;
   }
 
-  // ==================== 图片生成视频 API (词元 API) ====================
+  // ==================== 图片生成视频 API (Agnes) ====================
 
   /// 从 URL 下载图片到本地临时文件
   Future<File> _downloadImage(String imageUrl) async {
@@ -2005,24 +1885,23 @@ Composition: centered, full body visible, neutral standing pose
     }
   }
 
-  /// 使用词元视频生成 API 从图片生成视频（异步任务模式）
+  /// 使用 Agnes 视频 API（agnes-video-2.5-flash）生成视频（异步任务模式）
   ///
-  /// 支持的模型:
-  /// - veo3.1: Google Veo 3.1 (单图片，首帧)
-  /// - veo3.1-components: 支持多图片输入（最多3张参考图，URL字符串数组）
-  /// - sora-1: OpenAI Sora 1
-  /// - sora-2-pro: OpenAI Sora 2 Pro
+  /// 参考模式（旧参数兼容）:
+  /// - 传入 [imageUrls] 时使用 reference 模式（最多 5 张参考图）
+  /// - 不传 [imageUrls] 时使用 text 模式（文生视频）
+  /// - [model] 参数已不再生效，统一使用 Agnes 视频模型
   ///
   /// 工作流程：
-  /// 1. 提交任务到 POST /v1/videos，获取 task_id
+  /// 1. 提交任务到 POST /v1/videos，获取 video_id
   /// 2. 使用 [pollVideoStatus] 轮询任务状态
-  /// 3. 当 status 为 completed 时获取 video_url
+  /// 3. 当 status 为 completed 时获取 video 的 url
   Future<VideoGenerationResponse> generateVideo({
     required String prompt,
     List<String> imageUrls = const [], // 多张参考图URL（直接传URL字符串）
     String seconds = '10',
-    String model = 'veo3.1-components',  // 默认使用 veo3.1-components 支持多图
-    String size = '1280x720',
+    String model = 'veo3.1-components',  // 兼容参数，已由 Agnes 视频模型接管
+    String size = '1280x720', // 兼容参数，Agnes 固定 720P
     bool sanitizePrompt = false, // 是否清理提示词（重试时使用）
   }) async {
     // 如果启用清理，对提示词进行安全处理
@@ -2050,41 +1929,36 @@ Composition: centered, full body visible, neutral standing pose
     }
 
     // ========================================
-    // 生产模式：调用真实词元 API
+    // 生产模式：调用 Agnes 视频 API（agnes-video-2.5-flash）
     // ========================================
     try {
-      AppLogger.info('视频生成', '开始生成视频: $finalPrompt, 时长: ${seconds}秒, 模型: $model');
+      AppLogger.info('视频生成', '开始生成视频: $finalPrompt, 时长: ${seconds}秒, 模型: ${ApiConfig.agnesVideoModel}');
       AppLogger.info('视频生成', '参考图数量: ${imageUrls.length}');
       AppLogger.info('视频生成', '参考图URL: $imageUrls');
 
-      // 步骤 1: 准备 FormData 请求数据（API 要求 multipart/form-data 格式）
-      final formData = FormData.fromMap({
-        'model': model,
+      // Agnes 视频契约：JSON body，mode 参照图是否传入自动选择
+      // - 无参考图：mode=text（文生视频）
+      // - 有参考图：mode=reference + images[]（参考图模式，最多 5 张）
+      final hasReferenceImages = imageUrls.isNotEmpty;
+      final requestData = <String, dynamic>{
+        'model': ApiConfig.agnesVideoModel,
         'prompt': finalPrompt,
         'seconds': seconds,
-        'size': size,
-        'watermark': 'false',
-      });
+        'size': '720P',
+        'mode': hasReferenceImages ? 'reference' : 'text',
+      };
 
-      // 如果有参考图，每张图片作为单独的 input_reference 字段添加
-      // multipart/form-data 格式支持同名多值
-      for (final imageUrl in imageUrls) {
-        formData.fields.add(MapEntry('input_reference', imageUrl));
+      // 参考图模式：images 字段传入参考图 URL 数组
+      if (hasReferenceImages) {
+        requestData['images'] = imageUrls;
       }
 
-      AppLogger.apiRequestRaw('POST', '/v1/videos', {
-        'model': model,
-        'prompt': finalPrompt,
-        'seconds': seconds,
-        'size': size,
-        'watermark': 'false',
-        'input_reference': imageUrls,
-      });
+      AppLogger.apiRequestRaw('POST', '/v1/videos', requestData);
 
-      // 步骤 2: 提交任务
+      // 提交任务
       final response = await _tuziDio.post(
         '/v1/videos',
-        data: formData,
+        data: requestData,
       );
 
       AppLogger.apiResponseRaw('/v1/videos', response.data);
@@ -2142,7 +2016,7 @@ Composition: centered, full body visible, neutral standing pose
       return VideoGenerationResponse(
         id: taskId,
         object: 'video',
-        model: 'veo3.1',
+        model: ApiConfig.agnesVideoModel,
         status: 'completed',
         progress: 100,
         createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
@@ -2170,11 +2044,13 @@ Composition: centered, full body visible, neutral standing pose
           throw Exception('视频生成超时（超过 ${timeout.inMinutes} 分钟）');
         }
 
-        // 查询状态
-        final response = await _tuziDio.get('/v1/videos/$taskId');
+        // 查询状态（Agnes：GET /agnesapi?video_id=<id>&model_name=<model>）
+        final pollPath =
+            '/agnesapi?video_id=$taskId&model_name=${Uri.encodeQueryComponent(ApiConfig.agnesVideoModel)}';
+        final response = await _tuziDio.get(pollPath);
         final result = VideoGenerationResponse.fromJson(response.data);
 
-        AppLogger.apiResponseRaw('/v1/videos/$taskId', response.data);
+        AppLogger.apiResponseRaw(pollPath, response.data);
         AppLogger.info('视频轮询', '状态: ${result.status}, 进度: ${result.progress ?? 0}%');
 
         // 回调进度更新

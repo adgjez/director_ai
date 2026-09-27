@@ -292,7 +292,6 @@ class ScreenplayController {
             imageUrls: referenceUrls,
             prompt: scenePrompt,
             seconds: '5',
-            model: 'veo3.1-components',
             sanitizePrompt: true, // 净化提示词，移除敏感词
           );
 
@@ -520,7 +519,6 @@ class ScreenplayController {
         imageUrls: referenceUrls,
         prompt: scenePrompt,
         seconds: '5',
-        model: 'veo3.1-components',
       );
 
       // 等待视频生成完成
@@ -885,8 +883,7 @@ $characterAnalysis
           imageUrls: referenceUrls,
           prompt: scenePrompt,
           seconds: '5', // 每个场景5秒
-          model: 'veo3.1-components',
-          sanitizePrompt: true, // 净化提示词，移除敏感词
+            sanitizePrompt: true, // 净化提示词，移除敏感词
         );
 
         // 等待视频生成完成

@@ -129,7 +129,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       SizedBox(height: 2),
                       Text(
-                        '配置各服务的 API Key',
+                        '配置 Agnes API Key（对话/图像/视频通用）',
                         style: TextStyle(
                           fontSize: 13,
                           color: Color(0xFF8E8E93),
@@ -143,82 +143,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           // API Key 列表
-          // 智谱 GLM 配置
+          // Agnes 统一 API Key（对话/图像/视频/图片理解共用）
           _buildApiKeyRow(
             context,
-            '智谱 GLM-4.7',
-            ApiConfigService.maskApiKey(ApiConfigService.getZhipuApiKey()),
-            Icons.psychology_outlined,
-            const Color(0xFF8B5CF6),
-            () => _showApiKeyEditDialog(
-              context,
-              '智谱 GLM API Key',
-              ApiConfigService.getZhipuApiKey(),
-              (key) => ApiConfigService.setZhipuApiKey(key),
-            ),
-          ),
-          // 智谱推广信息
-          _buildPromoRow(
-            context,
-            '🚀 智谱 GLM Coding 超值订阅',
-            '20+ 编程工具无缝支持，限时惊喜价！',
-            const Color(0xFF8B5CF6),
-            'https://www.bigmodel.cn/glm-coding?ic=BUXAZXR3YZ',
-          ),
-          const Divider(height: 1),
-
-          // 视频生成配置
-          _buildApiKeyRow(
-            context,
-            '视频生成 (词元 API)',
-            ApiConfigService.maskApiKey(ApiConfigService.getVideoApiKey()),
-            Icons.videocam_outlined,
-            const Color(0xFFEC4899),
-            () => _showApiKeyEditDialog(
-              context,
-              '视频生成 API Key',
-              ApiConfigService.getVideoApiKey(),
-              (key) => ApiConfigService.setVideoApiKey(key),
-            ),
-          ),
-          const Divider(height: 1),
-
-          // 图像生成配置
-          _buildApiKeyRow(
-            context,
-            '图像生成 (词元 API)',
-            ApiConfigService.maskApiKey(ApiConfigService.getImageApiKey()),
-            Icons.image_outlined,
-            const Color(0xFFF59E0B),
-            () => _showApiKeyEditDialog(
-              context,
-              '图像生成 API Key',
-              ApiConfigService.getImageApiKey(),
-              (key) => ApiConfigService.setImageApiKey(key),
-            ),
-          ),
-          // 词元 API 推广信息
-          _buildPromoRow(
-            context,
-            '🎁 推荐词元 API',
-            '稳定、高性能的 AI 服务接口',
-            const Color(0xFFEC4899),
-            'https://ciyuan.today/',
-          ),
-          const Divider(height: 1),
-
-          _buildApiKeyRow(
-            context,
-            '豆包 ARK (图片识别)',
-            ApiConfigService.maskApiKey(ApiConfigService.getDoubaoApiKey()),
-            Icons.visibility_outlined,
+            'Agnes API Key',
+            ApiConfigService.maskApiKey(ApiConfigService.getAgnesApiKey()),
+            Icons.all_inclusive_outlined,
             const Color(0xFF10B981),
             () => _showApiKeyEditDialog(
               context,
-              '豆包 API Key',
-              ApiConfigService.getDoubaoApiKey(),
-              (key) => ApiConfigService.setDoubaoApiKey(key),
+              'Agnes API Key',
+              ApiConfigService.getAgnesApiKey(),
+              (key) => ApiConfigService.setAgnesApiKey(key),
             ),
+          ),
+          const Divider(height: 1),
+
+          // Agnes 官方平台
+          _buildPromoRow(
+            context,
+            '🌐 Agnes AI 官方平台',
+            '文本/图像/视频一 Key 通用，免费开放',
+            const Color(0xFF10B981),
+            'https://platform.agnes-ai.com/',
           ),
 
           // 提示信息

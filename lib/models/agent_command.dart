@@ -130,11 +130,13 @@ class GLMChoice {
 }
 
 /// ============================================
-/// 视频生成响应（Tuzi Sora API）
+/// 视频生成响应（Agnes Video API，OpenAI Videos 兼容）
 /// ============================================
 /// 支持异步任务模式：提交任务 -> 轮询状态 -> 获取结果
+/// Agnes 创建任务后返回 video_id（poll 用）与 id/task_id（任务标识），
+/// 轮询接口为 GET /agnesapi?video_id=<VIDEO_ID>&model_name=<MODEL>。
 class VideoGenerationResponse {
-  final String? id;           // 任务唯一标识 ID
+  final String? id;           // 任务唯一标识 ID（轮询用：优先取 video_id，回退 id/task_id）
   final String? object;       // 对象类型，固定为 "video"
   final String? model;        // 所使用的模型名称
   final String? status;       // 任务状态：queued, in_progress, completed, failed
@@ -158,7 +160,9 @@ class VideoGenerationResponse {
 
   factory VideoGenerationResponse.fromJson(Map<String, dynamic> json) {
     return VideoGenerationResponse(
-      id: json['id']?.toString(),
+      id: json['video_id']?.toString() ??
+          json['id']?.toString() ??
+          json['task_id']?.toString(),
       object: json['object']?.toString(),
       model: json['model']?.toString(),
       status: json['status']?.toString(),
@@ -166,7 +170,7 @@ class VideoGenerationResponse {
       createdAt: json['created_at'] != null ? int.tryParse(json['created_at'].toString()) : null,
       seconds: json['seconds']?.toString(),
       videoUrl: json['video_url']?.toString() ?? json['url']?.toString(),
-      error: json['error']?.toString(),
+      error: json['error']?.toString() ?? json['detail']?.toString(),
     );
   }
 
