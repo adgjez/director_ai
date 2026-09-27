@@ -1919,7 +1919,7 @@ Composition: centered, full body visible, neutral standing pose
       final requestData = <String, dynamic>{
         'model': ApiConfig.agnesVideoModel,
         'prompt': finalPrompt,
-        'seconds': seconds,
+        'seconds': seconds.toString(),
         'size': '720P',
         'mode': hasReferenceImages ? 'reference' : 'text',
         'aspect_ratio': '16:9',
@@ -1955,10 +1955,13 @@ Composition: centered, full body visible, neutral standing pose
     } catch (e) {
       AppLogger.error('视频生成', '生成视频失败', e, StackTrace.current);
 
-      // 503 自动重试：Agnes API 视频端点偶发过载，指数退避后重试
-      if (e is DioException && e.response?.statusCode == 503 && retryCount < 3) {
+      final statusCode = (e is DioException) ? e.response?.statusCode : null;
+
+      // 503/429 自动重试：Agnes API 视频端点偶发过载或限流，指数退避后重试
+      if ((statusCode == 503 || statusCode == 429) && retryCount < 3) {
         final delay = Duration(seconds: 15 * (retryCount + 1));
-        AppLogger.warn('视频生成', 'Agnes 视频服务暂时不可用（503），${delay.inSeconds}秒后重试（第${retryCount + 1}次）...');
+        final reason = statusCode == 503 ? '视频队列满（503）' : '请求频繁（429）';
+        AppLogger.warn('视频生成', 'Agnes $reason，${delay.inSeconds}秒后重试（第${retryCount + 1}次）...');
         await Future.delayed(delay);
         return generateVideo(
           prompt: prompt,
