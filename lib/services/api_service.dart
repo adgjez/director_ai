@@ -20,10 +20,10 @@ class ApiConfig {
   static const String agnesBaseUrl = 'https://apihub.agnes-ai.com/v1'; // Agnes API 基础URL (chat/images/videos)
   static const String agnesRootUrl = 'https://apihub.agnes-ai.com'; // Agnes 根域名（视频轮询 /agnesapi 端点使用）
 
-  // Agnes 模型（2.5 系列 Preview 尚未发布，使用已上线/已验证版本）
-  static const String agnesTextModel = 'agnes-3.0-flash'; // 文本：对话/剧本/图片理解（512K 上下文）
-  static const String agnesImageModel = 'agnes-image-2.1-flash'; // 图像：文生图/图生图/多图合成（已验证上线）
-  static const String agnesVideoModel = 'agnes-video-v2.0'; // 视频：文生视频/关键帧/参考图（已上线）
+  // Agnes 模型（图片/视频端点使用 agnesRootUrl，不含 /v1 前缀）
+  static const String agnesTextModel = 'agnes-3.0-flash'; // 文本：对话/剧本/图片理解
+  static const String agnesImageModel = 'agnes-image-2.5-flash'; // 图像：文生图/图生图/多图合成
+  static const String agnesVideoModel = 'agnes-video-2.5-flash'; // 视频：文生视频/关键帧/参考图（720P）
 
   // 各服务的 API Key（统一从 Agnes 读取；旧 getter 保留为兼容别名）
   static String get agnesApiKey => ApiConfigService.getAgnesApiKey();
@@ -601,9 +601,10 @@ class ApiService {
   }
 
   /// 创建 Agnes 图像生成专用 Dio 实例
+  /// 注意：图片端点路径以 /v1 开头，使用 agnesRootUrl（不含 /v1）避免 URL 双重拼接
   Dio _createImageDio() {
     final dio = Dio(BaseOptions(
-      baseUrl: ApiConfig.agnesBaseUrl,
+      baseUrl: ApiConfig.agnesRootUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 60),
       headers: {
