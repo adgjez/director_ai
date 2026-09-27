@@ -1,0 +1,28 @@
+# ---- Flutter / Dart ----
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+*.iml
+
+# ---- Python (web/) ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+*.egg-info/
+
+# ---- IDE ----
+.idea/
+.vscode/
+
+# ---- OS / 临时 ----
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+
+# ---- AI 媒体产物（避免大文件入库） ----
+/output/
+/generated/
