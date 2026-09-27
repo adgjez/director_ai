@@ -14,40 +14,24 @@ director_ai/
 │   ├── providers/    # 状态管理（Provider）
 │   ├── screens/      # 对话、剧本预览、素材包等界面
 │   └── widgets/      # 通用组件
-├── web/          # Web 工作台（AI Storyboard Pro，Python）
-│   ├── app.py        # Gradio UI
-│   ├── api_server.py # FastAPI REST 服务
-│   ├── setup_wizard.py
-│   └── mobile/       # Web 端配套 Flutter 移动应用
-├── docs/         # 设计文档（视频生成流程、人物一致性方案等）
-└── images/       # 演示与宣传素材
+└── android/      # Android 平台工程
 ```
 
 ## 快速开始
-
-### 移动端（Flutter）
 
 ```bash
 flutter pub get
 flutter run
 ```
 
-### Web 工作台（Python）
+## 核心能力
 
-```bash
-cd web
-pip install -r requirements.txt
-python setup_wizard.py   # 配置 API Key
-./start.sh               # 启动 Gradio UI
-```
-
-## 设计文档
-
-- [视频生成完整流程](docs/视频生成完整流程.md)
-- [图像生成 API 接口文档](docs/图像生成API接口文档.md)
-- [人物一致性实现方案](docs/人物一致性实现方案.md)
-- [需求和待办](docs/需求和待办/TODO.md)
+- 智能对话：以 GLM 大模型作为决策引擎，将自然语言转化为剧本
+- 剧本规划：剧本、分镜（生图提示词、视频动效提示词）自动生成与解析
+- 人物一致性：保持跨分镜的人物特征一致
+- 批量生图 / 生视频：分镜关键帧与动态短片自动生成
+- 视频合并：多分镜合成成片
 
 ## 说明
 
-本仓库为 `freestylefly/director_ai` 的二次开发 fork，上游项目已停止维护（最后提交 2026-05-01），本仓库独立演进。
+本仓库为 `freestylefly/director_ai` 的二次开发 fork，上游项目已停止维护（最后提交 2026-05-01），本仓库独立演进，专注移动端。
