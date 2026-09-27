@@ -20,10 +20,10 @@ class ApiConfig {
   static const String agnesBaseUrl = 'https://apihub.agnes-ai.com/v1'; // Agnes API 基础URL (chat/images/videos)
   static const String agnesRootUrl = 'https://apihub.agnes-ai.com'; // Agnes 根域名（视频轮询 /agnesapi 端点使用）
 
-  // Agnes 模型（图片/视频端点使用 agnesRootUrl，不含 /v1 前缀）
+  // Agnes 模型（视频默认 v2.0，免费用户队列更稳定）
   static const String agnesTextModel = 'agnes-3.0-flash'; // 文本：对话/剧本/图片理解
   static const String agnesImageModel = 'agnes-image-2.5-flash'; // 图像：文生图/图生图/多图合成
-  static const String agnesVideoModel = 'agnes-video-2.5-flash'; // 视频：文生视频/关键帧/参考图（720P）
+  static const String agnesVideoModel = 'agnes-video-v2.0'; // 视频：文生视频（v2.0 队列更稳定）
 
   // 各服务的 API Key（统一从 Agnes 读取；旧 getter 保留为兼容别名）
   static String get agnesApiKey => ApiConfigService.getAgnesApiKey();
@@ -1341,20 +1341,22 @@ $previousFeedback
     int retryCount = 0,
   }) async {
     try {
-      // Agnes 图像契约：根级参数，extra_body 非标准 HTTP 字段
+      // Agnes 图像契约：extra_body 包裹非标准字段（Agnes OpenAI 兼容层支持 SDK 风格）
       final requestData = <String, dynamic>{
         'model': ApiConfig.agnesImageModel,
         'prompt': prompt,
         'n': 1,
         'size': '1024x1024',
-        'response_format': 'url',
+        'extra_body': <String, dynamic>{
+          'response_format': 'url',
+        },
       };
 
-      // 如果有参考图，作为根级 image 传入（图生图，参考模式）
+      // 如果有参考图，作为 extra_body.image 传入（图生图，参考模式）
       if (referenceImages != null && referenceImages.isNotEmpty) {
         // API 支持数组格式：["base64xxx", "base64yyy"]
         // 或 URL 格式：["https://xxx", "https://yyy"]
-        requestData['image'] = referenceImages;
+        (requestData['extra_body'] as Map<String, dynamic>)['image'] = referenceImages;
         AppLogger.info('图片生成', '图生图模式，参考图数量: ${referenceImages.length}');
       }
 
